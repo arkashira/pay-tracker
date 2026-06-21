@@ -6,51 +6,45 @@ from typing import List
 @dataclass
 class Invoice:
     id: int
-    due_date: str
-    status: str
     amount: float
-    paid: float
+    due_date: str
+    paid_amount: float
+    status: str
 
 @dataclass
 class EmailTemplate:
-    subject: str
-    body: str
+    id: int
+    template: str
 
 class PayTracker:
     def __init__(self):
         self.invoices = []
-        self.email_templates = {}
+        self.email_templates = []
         self.sent_emails = []
 
     def add_invoice(self, invoice: Invoice):
         self.invoices.append(invoice)
 
-    def add_email_template(self, template_id: str, template: EmailTemplate):
-        self.email_templates[template_id] = template
+    def add_email_template(self, template: EmailTemplate):
+        self.email_templates.append(template)
 
     def send_reminders(self):
         for invoice in self.invoices:
-            if invoice.status == 'partial' or invoice.due_date < datetime.now().strftime('%Y-%m-%d'):
-                template = self.email_templates.get('reminder')
+            due_date = datetime.strptime(invoice.due_date, '%Y-%m-%d')
+            today = datetime.today()
+            if today > due_date or invoice.paid_amount < invoice.amount:
+                template = next((t for t in self.email_templates if t.id == 1), None)
                 if template:
-                    email = {
-                        'subject': template.subject,
-                        'body': template.body,
-                        'invoice_id': invoice.id
-                    }
-                    self.sent_emails.append(email)
+                    email_body = template.template.replace('{invoice_id}', str(invoice.id))
+                    self.sent_emails.append(email_body)
 
-    def log_email(self, email):
-        self.sent_emails.append(email)
+    def log_sent_emails(self):
+        return self.sent_emails
 
-    def get_sent_emails(self, invoice_id: int):
-        return [email for email in self.sent_emails if email['invoice_id'] == invoice_id]
+    def get_email_template(self, id: int):
+        return next((t for t in self.email_templates if t.id == id), None)
 
-    def edit_email_template(self, template_id: str, new_template: EmailTemplate):
-        if template_id in self.email_templates:
-            self.email_templates[template_id] = new_template
-        else:
-            raise ValueError('Template not found')
-
-    def get_email_template(self, template_id: str):
-        return self.email_templates.get(template_id)
+    def update_email_template(self, id: int, new_template: str):
+        template = self.get_email_template(id)
+        if template:
+            template.template = new_template
