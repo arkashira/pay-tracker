@@ -1,37 +1,56 @@
 import json
 from dataclasses import dataclass
-from argparse import ArgumentParser
+from datetime import datetime, timedelta
+from typing import List
 
 @dataclass
+class Invoice:
+    id: int
+    due_date: str
+    status: str
+    amount: float
+    paid: float
+
+@dataclass
+class EmailTemplate:
+    subject: str
+    body: str
+
 class PayTracker:
-    payments: list
+    def __init__(self):
+        self.invoices = []
+        self.email_templates = {}
+        self.sent_emails = []
 
-    def add_payment(self, amount):
-        self.payments.append(amount)
+    def add_invoice(self, invoice: Invoice):
+        self.invoices.append(invoice)
 
-    def get_total(self):
-        return sum(self.payments)
+    def add_email_template(self, template_id: str, template: EmailTemplate):
+        self.email_templates[template_id] = template
 
-    def get_dashboard(self):
-        total = self.get_total()
-        payments = self.payments
-        return {
-            "total": total,
-            "payments": payments
-        }
+    def send_reminders(self):
+        for invoice in self.invoices:
+            if invoice.status == 'partial' or invoice.due_date < datetime.now().strftime('%Y-%m-%d'):
+                template = self.email_templates.get('reminder')
+                if template:
+                    email = {
+                        'subject': template.subject,
+                        'body': template.body,
+                        'invoice_id': invoice.id
+                    }
+                    self.sent_emails.append(email)
 
-def main():
-    parser = ArgumentParser()
-    parser.add_argument("--add", type=float, help="Add a payment")
-    args = parser.parse_args()
+    def log_email(self, email):
+        self.sent_emails.append(email)
 
-    pay_tracker = PayTracker([])
+    def get_sent_emails(self, invoice_id: int):
+        return [email for email in self.sent_emails if email['invoice_id'] == invoice_id]
 
-    if args.add:
-        pay_tracker.add_payment(args.add)
+    def edit_email_template(self, template_id: str, new_template: EmailTemplate):
+        if template_id in self.email_templates:
+            self.email_templates[template_id] = new_template
+        else:
+            raise ValueError('Template not found')
 
-    dashboard = pay_tracker.get_dashboard()
-    print(json.dumps(dashboard, indent=4))
-
-if __name__ == "__main__":
-    main()
+    def get_email_template(self, template_id: str):
+        return self.email_templates.get(template_id)
