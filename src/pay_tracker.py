@@ -1,42 +1,33 @@
-import json
 from dataclasses import dataclass
-from datetime import datetime
+from enum import Enum
+from typing import List
+
+class InvoiceStatus(str, Enum):
+    ALL = "all"
+    UNPAID = "unpaid"
+    PARTIALLY_PAID = "partially_paid"
+    PAID = "paid"
 
 @dataclass
 class Invoice:
     id: int
+    status: str
     amount: float
-    due_date: str
-    payment_status: str
+    paid_amount: float
 
 class PayTracker:
-    def __init__(self):
-        self.invoices = []
+    def __init__(self, invoices: List[Invoice]):
+        self.invoices = invoices
 
-    def add_invoice(self, invoice):
-        self.invoices.append(invoice)
+    def filter_invoices(self, status: InvoiceStatus) -> List[Invoice]:
+        if status == InvoiceStatus.ALL:
+            return self.invoices
+        elif status == InvoiceStatus.UNPAID:
+            return [invoice for invoice in self.invoices if invoice.paid_amount == 0]
+        elif status == InvoiceStatus.PARTIALLY_PAID:
+            return [invoice for invoice in self.invoices if 0 < invoice.paid_amount < invoice.amount]
+        elif status == InvoiceStatus.PAID:
+            return [invoice for invoice in self.invoices if invoice.paid_amount == invoice.amount]
 
-    def prioritize_invoices(self):
-        return sorted(self.invoices, key=lambda x: (x.due_date, x.amount), reverse=True)
-
-    def save_prioritized_list(self, filename):
-        with open(filename, 'w') as f:
-            json.dump([{'id': i.id, 'amount': i.amount, 'due_date': i.due_date} for i in self.prioritize_invoices()], f)
-
-    def load_prioritized_list(self, filename):
-        try:
-            with open(filename, 'r') as f:
-                return json.load(f)
-        except FileNotFoundError:
-            return []
-
-    def send_notifications(self):
-        overdue_invoices = [i for i in self.invoices if datetime.strptime(i.due_date, '%Y-%m-%d') < datetime.now()]
-        for invoice in overdue_invoices:
-            print(f"Notification: Invoice {invoice.id} is overdue")
-
-def parse_date(date_str):
-    try:
-        return datetime.strptime(date_str, '%Y-%m-%d')
-    except ValueError:
-        raise ValueError("Invalid date format")
+    def get_invoices_count(self, status: InvoiceStatus) -> int:
+        return len(self.filter_invoices(status))
